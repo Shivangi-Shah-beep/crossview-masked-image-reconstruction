@@ -2,24 +2,26 @@
 
 A Vision Transformer built from scratch that reconstructs a heavily masked image of a room using a second, unmasked view of the same room. The model sees the full **reference** view and only 5 to 25% of the **target** view, and has to fill in the rest of the target.
 
-<img width="1030" height="1650" alt="Unknown-5" src="https://github.com/user-attachments/assets/1e2d9885-3031-4885-8910-58cd693a2c29" />
+**Model**
 
-**Model.**
-- Encoder: ViT, width 192, 6 blocks, 3 heads, 8 x 8 patches (16 x 16 grid). The same encoder processes each view separately.
-- Decoder: target tokens (visible and masked) attend to the reference tokens through cross attention.
-- Target masking: 75 to 95% during training. The reference is never masked.
-- Loss: mean squared error on hidden patches, with each target patch normalized by its own mean and std.
-- Stats head: a small MLP predicts each hidden patch's brightness (mean) and contrast (log std), so reconstructions don't need to borrow them from the ground truth.
+<img width="464" height="517" alt="Screenshot 2026-10-23 at 3 16 24 PM" src="https://github.com/user-attachments/assets/8b9cddc8-23b9-4b97-a106-c755593464dd" />
+
+The model is trained to predict each hidden patch in normalized form, with its own brightness and contrast removed, because that gives better features. But to turn those predictions back into an image, you need each patch’s real brightness and contrast, and for hidden patches those come from the ground truth the model is supposed to be guessing. The stats head predicts these two values for every hidden patch, so the reconstruction is built entirely from the model’s own outputs, with no help from the answer.
+
+**With Reference**
+<img width="2070" height="1650" alt="Unknown-7" src="https://github.com/user-attachments/assets/e0d960b3-d2a2-458c-92e2-476e8fadbb4c" />
+
+**Without Reference**
+
+<img width="2070" height="1650" alt="Unknown-8" src="https://github.com/user-attachments/assets/a408cd6d-c1e5-4346-8969-e9cd8cb68fc1" />
+
+This shows that cross attention with reference image does help in reconstruction
 
 ## Results
 
-### Ablation: brightness and contrast head
+| | Baseline (no stats) | Linear head | MLP head, w=0.5 | MLP head, w=0.2 | **MLP head, w=0.2 + MAE encoder** |
+|---|---|---|---|---|---|
+| Test loss @ 90% masked | 0.3342 | 0.3538 | 0.3475 | 0.3376 | **0.3285** |
+| PSNR on hidden patches, ARKitScenes | 14.96* | 21.62 | 21.68 | 21.75 | **21.86** |
 
-| | Baseline (no stats) | Linear head | MLP head, w=0.5 | **MLP head, w=0.2** |
-|---|---|---|---|---|
-| Best val loss @ 90% masked | 0.3175 | 0.3332 | 0.3280 | **0.3200** |
-| Test loss @ 90% masked | 0.3342 | 0.3538 | 0.3475 | **0.3376** |
-| Test loss, ARKitScenes (unseen rooms) | 0.3434 | 0.3585 | 0.3548 | **0.3471** |
-| PSNR on hidden patches, average | 14.6* | 21.60 | 21.70 | **21.81** |
-| PSNR on hidden patches, ARKitScenes | 14.96* | 21.62 | 21.68 | **21.75** |
-| Loss with reference hidden / shown (75% masked) | 2.26x | 1.93x | 1.94x | **2.32x** |
+\* brightness and contrast borrowed from neighboring visible patches
