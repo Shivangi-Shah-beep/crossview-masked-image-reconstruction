@@ -1,4 +1,4 @@
-# multiview-masked-reconstruction
+# crossview-masked-reconstruction
 
 A Vision Transformer built from scratch that reconstructs a heavily masked image of a room using a second, unmasked view of the same room. The model sees the full **reference** view and only 5 to 25% of the **target** view, and has to fill in the rest of the target.
 
